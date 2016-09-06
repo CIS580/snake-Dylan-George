@@ -7,6 +7,14 @@ backBuffer.height = frontBuffer.height;
 var backCtx = backBuffer.getContext('2d');
 var oldTime = performance.now();
 
+//x position of snake head
+var x = 0;
+//y position of snake head
+var y = 0;
+
+var headWidth = 15;
+var timer = 0;
+
 /**
  * @function loop
  * The main game loop.
@@ -14,6 +22,7 @@ var oldTime = performance.now();
  */
 function loop(newTime) {
   var elapsedTime = newTime - oldTime;
+  timer += elapsedTime;
   oldTime = newTime;
   
   update(elapsedTime);
@@ -26,6 +35,63 @@ function loop(newTime) {
   window.requestAnimationFrame(loop);
 }
 
+var currentDirection = 
+{
+	up: false,
+	down: false,
+	left: false,
+	right: false
+}
+
+//Handles arrow key/wasd button press events, allowing movement
+window.onkeydown = function(event)
+{
+	switch(event.keyCode)
+	{
+		//up
+		case 38:
+		case 87:
+			resetDirection();
+			currentDirection.up = true;
+			event.preventDefault();
+			break;
+		//down
+		case 40:
+		case 83:
+			resetDirection();
+			currentDirection.down = true;
+			event.preventDefault();
+			break;
+		//left
+		case 37:
+		case 65:
+			resetDirection();
+			currentDirection.left = true;
+			event.preventDefault();
+			break;
+		//right
+		case 39:
+		case 68:
+			resetDirection();
+			currentDirection.right = true;
+			event.preventDefault();
+			break;
+	}
+}
+
+/**
+ * @function resetDirection
+ * Resets the current movement direction
+ * to enable the change of direction
+ */
+function resetDirection()
+{
+	for(var direction in currentDirection)
+	{
+		currentDirection[direction] = false;
+	}	
+}
+
 /**
  * @function update
  * Updates the game state, moving
@@ -34,9 +100,25 @@ function loop(newTime) {
  * @param {elapsedTime} A DOMHighResTimeStamp indicting
  * the number of milliseconds passed since the last frame.
  */
-function update(elapsedTime) {
+function update(elapsedTime) 
+{
+	var oldX = x;
+	var oldY = y;
   //multiply snake speed by elapsed time for consistent speed across platforms
-  
+	if(currentDirection.up) y -= headWidth * elapsedTime / 1000;
+	else if(currentDirection.down) y += headWidth * elapsedTime / 1000;
+	else if(currentDirection.right) x += headWidth * elapsedTime / 1000;
+	else if(currentDirection.left) x -= headWidth * elapsedTime / 1000;
+	if (timer >= 1000)
+	{
+		timer = 0;
+		frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
+		frontCtx.fillStyle = "red";
+		frontCtx.fillRect(oldX, oldY, 15, 15);
+		frontCtx.fillStyle = "blue";
+		frontCtx.fillRect(x, y, 15, 15);
+	}
+	
   // To make snake parts follow head, use array and replace each location with 
   // location of piece in front of them
   
@@ -78,7 +160,7 @@ function update(elapsedTime) {
   * the number of milliseconds passed since the last frame.
   */
 function render(elapsedTime) {
-  //not necessary if drawing image
+  //not necessary if drawing image (it will draw over it anyway)
   backCtx.clearRect(0, 0, backBuffer.width, backBuffer.height);
 
   // TODO: Draw the game objects into the backBuffer
