@@ -18,7 +18,10 @@ var headWidth = 15;
 //Total headWidths travelled per second
 var speed = 10;
 var timer = 0;
-var traveled = 0;
+var xBias = headWidth/2;
+var yBias = headWidth/2;
+var adjust = false;
+var turnable = false;
 
 function start()
 {
@@ -54,12 +57,13 @@ function loop(newTime) {
 
   // Flip the back buffer
   frontCtx.drawImage(backBuffer, 0, 0);
-
+  
   // Run the next loop
   window.requestAnimationFrame(loop);
 }
 
-var turnable = false;
+
+
 var currentDirection = 
 {
 	up: false,
@@ -71,12 +75,14 @@ var currentDirection =
 //Handles arrow key/wasd button press events, allowing movement
 window.onkeydown = function(event)
 {
+	if(turnable)
+	{
 	switch(event.keyCode)
 	{
 		//up
 		case 38:
 		case 87:
-			if(!currentDirection.down)
+			if(!currentDirection.down && !currentDirection.up)
 			{
 				resetDirection();
 				currentDirection.up = true;
@@ -86,7 +92,7 @@ window.onkeydown = function(event)
 		//down
 		case 40:
 		case 83:
-			if(!currentDirection.up)
+			if(!currentDirection.up && !currentDirection.down)
 			{
 				resetDirection();
 				currentDirection.down = true;
@@ -96,7 +102,7 @@ window.onkeydown = function(event)
 		//left
 		case 37:
 		case 65:
-			if(!currentDirection.right)
+			if(!currentDirection.right && !currentDirection.left)
 			{
 				resetDirection();
 				currentDirection.left = true;
@@ -106,13 +112,14 @@ window.onkeydown = function(event)
 		//right
 		case 39:
 		case 68:
-			if(!currentDirection.left)
+			if(!currentDirection.left && !currentDirection.right)
 			{
 				resetDirection();
 				currentDirection.right = true;
 			}
 			event.preventDefault();
 			break;
+	}
 	}
 }
 
@@ -123,6 +130,7 @@ window.onkeydown = function(event)
  */
 function resetDirection()
 {
+	adjust = true;
 	for(var direction in currentDirection)
 	{
 		currentDirection[direction] = false;
@@ -139,29 +147,35 @@ function resetDirection()
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) 
-{
+{	
+	var gridX = headWidth * Math.floor((x+xBias)/headWidth);
+	var gridY = headWidth * Math.floor((y+yBias)/headWidth);
 	var tempX = x;
+	if(adjust)
+	{
+		console.log("adjust");
+		x = gridX;
+		y = gridY;
+		adjust = false;
+	}
+
 	if(currentDirection.up) y -= speed * headWidth * elapsedTime / 1000;
 	else if(currentDirection.down) y += speed * headWidth * elapsedTime / 1000;
 	else if(currentDirection.right) x += speed * headWidth * elapsedTime / 1000;
 	else if(currentDirection.left) x -= speed * headWidth * elapsedTime / 1000;
 
-	/*if((Math.abs(oldX - x) >= headWidth) || (Math.abs(oldY - y) >= headWidth))
+	if((Math.abs(oldX - x) >= headWidth) || (Math.abs(oldY - y) >= headWidth))
 	{
 		oldX = x;
 		oldY = y;
-		x = headWidth * x/headWidth;
-	}*/
+		turnable = true;
+	}
 
 	if (timer > 1000)
 	{
 		timer = 0;
 	}
-	var gridX = headWidth * Math.floor(x/headWidth);
-	var gridY = headWidth * Math.floor(y/headWidth);
-	var coordFit = [gridX + headWidth/2, gridY + headWidth/2];
-	
-	
+
 	frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
 	frontCtx.fillStyle = "blue";
 	frontCtx.fillRect(x, y, headWidth, headWidth);
