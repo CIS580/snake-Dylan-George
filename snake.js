@@ -11,9 +11,33 @@ var oldTime = performance.now();
 var x = 0;
 //y position of snake head
 var y = 0;
+var oldX = 0;
+var oldY = 0;
 
 var headWidth = 15;
+//Total headWidths travelled per second
+var speed = 10;
 var timer = 0;
+var traveled = 0;
+
+function start()
+{
+	var temp = 0;
+	var yDist = 0;
+	
+	x = headWidth * Math.floor((Math.random() * frontBuffer.width/headWidth));
+	y = headWidth * Math.floor((Math.random() * frontBuffer.height/headWidth));
+	oldX = x;
+	oldY = y;
+	if (y <= (frontBuffer.height / 2))
+	{
+		yDist = frontBuffer.height - y;
+	}
+	else yDist = y - frontBuffer.width;
+	
+	if (yDist > 0) currentDirection.down = true;
+	else currentDirection.up = true;
+}
 
 /**
  * @function loop
@@ -22,8 +46,8 @@ var timer = 0;
  */
 function loop(newTime) {
   var elapsedTime = newTime - oldTime;
-  timer += elapsedTime;
   oldTime = newTime;
+  timer+=elapsedTime;	
   
   update(elapsedTime);
   render(elapsedTime);
@@ -35,6 +59,7 @@ function loop(newTime) {
   window.requestAnimationFrame(loop);
 }
 
+var turnable = false;
 var currentDirection = 
 {
 	up: false,
@@ -51,29 +76,41 @@ window.onkeydown = function(event)
 		//up
 		case 38:
 		case 87:
-			resetDirection();
-			currentDirection.up = true;
+			if(!currentDirection.down)
+			{
+				resetDirection();
+				currentDirection.up = true;
+			}
 			event.preventDefault();
 			break;
 		//down
 		case 40:
 		case 83:
-			resetDirection();
-			currentDirection.down = true;
+			if(!currentDirection.up)
+			{
+				resetDirection();
+				currentDirection.down = true;
+			}
 			event.preventDefault();
 			break;
 		//left
 		case 37:
 		case 65:
-			resetDirection();
-			currentDirection.left = true;
+			if(!currentDirection.right)
+			{
+				resetDirection();
+				currentDirection.left = true;
+			}
 			event.preventDefault();
 			break;
 		//right
 		case 39:
 		case 68:
-			resetDirection();
-			currentDirection.right = true;
+			if(!currentDirection.left)
+			{
+				resetDirection();
+				currentDirection.right = true;
+			}
 			event.preventDefault();
 			break;
 	}
@@ -90,6 +127,7 @@ function resetDirection()
 	{
 		currentDirection[direction] = false;
 	}	
+	turnable = false;
 }
 
 /**
@@ -102,22 +140,31 @@ function resetDirection()
  */
 function update(elapsedTime) 
 {
-	var oldX = x;
-	var oldY = y;
-  //multiply snake speed by elapsed time for consistent speed across platforms
-	if(currentDirection.up) y -= headWidth * elapsedTime / 1000;
-	else if(currentDirection.down) y += headWidth * elapsedTime / 1000;
-	else if(currentDirection.right) x += headWidth * elapsedTime / 1000;
-	else if(currentDirection.left) x -= headWidth * elapsedTime / 1000;
-	if (timer >= 1000)
+	var tempX = x;
+	if(currentDirection.up) y -= speed * headWidth * elapsedTime / 1000;
+	else if(currentDirection.down) y += speed * headWidth * elapsedTime / 1000;
+	else if(currentDirection.right) x += speed * headWidth * elapsedTime / 1000;
+	else if(currentDirection.left) x -= speed * headWidth * elapsedTime / 1000;
+
+	/*if((Math.abs(oldX - x) >= headWidth) || (Math.abs(oldY - y) >= headWidth))
+	{
+		oldX = x;
+		oldY = y;
+		x = headWidth * x/headWidth;
+	}*/
+
+	if (timer > 1000)
 	{
 		timer = 0;
-		frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
-		frontCtx.fillStyle = "red";
-		frontCtx.fillRect(oldX, oldY, 15, 15);
-		frontCtx.fillStyle = "blue";
-		frontCtx.fillRect(x, y, 15, 15);
 	}
+	var gridX = headWidth * Math.floor(x/headWidth);
+	var gridY = headWidth * Math.floor(y/headWidth);
+	var coordFit = [gridX + headWidth/2, gridY + headWidth/2];
+	
+	
+	frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
+	frontCtx.fillStyle = "blue";
+	frontCtx.fillRect(x, y, headWidth, headWidth);
 	
   // To make snake parts follow head, use array and replace each location with 
   // location of piece in front of them
@@ -168,4 +215,5 @@ function render(elapsedTime) {
 }
 
 /* Launch the game */
+start();
 window.requestAnimationFrame(loop);
