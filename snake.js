@@ -7,9 +7,8 @@ backBuffer.height = frontBuffer.height;
 var backCtx = backBuffer.getContext('2d');
 var oldTime = performance.now();
 
-//x position of snake head
+//x and y position of snake head
 var x = 0;
-//y position of snake head
 var y = 0;
 var oldX = 0;
 var oldY = 0;
@@ -18,11 +17,28 @@ var headWidth = 15;
 //Total headWidths travelled per second
 var speed = 10;
 var timer = 0;
+var appleCount = 0;
 var xBias = headWidth/2;
 var yBias = headWidth/2;
 var adjust = false;
 var turnable = false;
+var apples = [];
+var snake = [{xpos:0, ypos:5, radius:5}]
 
+var currentDirection = 
+{
+	up: false,
+	down: false,
+	left: false,
+	right: false
+}
+
+/**
+ * @function start
+ * Spawn the worm in a random location on the grid.
+ * Start worm moving in direction away from closest edge.
+ * Spawn an apple.
+ */
 function start()
 {
 	var temp = 0;
@@ -40,6 +56,9 @@ function start()
 	
 	if (yDist > 0) currentDirection.down = true;
 	else currentDirection.up = true;
+	
+	timer = 5000;
+	appleSpawner();
 }
 
 /**
@@ -62,15 +81,6 @@ function loop(newTime) {
   window.requestAnimationFrame(loop);
 }
 
-
-
-var currentDirection = 
-{
-	up: false,
-	down: false,
-	left: false,
-	right: false
-}
 
 //Handles arrow key/wasd button press events, allowing movement
 window.onkeydown = function(event)
@@ -126,7 +136,8 @@ window.onkeydown = function(event)
 /**
  * @function resetDirection
  * Resets the current movement direction
- * to enable the change of direction
+ * to enable the change of direction.
+ * Sets adjust to true so worm is fit to grid next update
  */
 function resetDirection()
 {
@@ -139,21 +150,17 @@ function resetDirection()
 }
 
 /**
- * @function update
- * Updates the game state, moving
- * game objects and handling interactions
- * between them.
+ * @function move
+ * Moves the worm forward and keeps it on the grid
  * @param {elapsedTime} A DOMHighResTimeStamp indicting
  * the number of milliseconds passed since the last frame.
  */
-function update(elapsedTime) 
-{	
+function move(elapsedTime)
+{
 	var gridX = headWidth * Math.floor((x+xBias)/headWidth);
 	var gridY = headWidth * Math.floor((y+yBias)/headWidth);
-	var tempX = x;
 	if(adjust)
 	{
-		console.log("adjust");
 		x = gridX;
 		y = gridY;
 		adjust = false;
@@ -164,35 +171,87 @@ function update(elapsedTime)
 	else if(currentDirection.right) x += speed * headWidth * elapsedTime / 1000;
 	else if(currentDirection.left) x -= speed * headWidth * elapsedTime / 1000;
 
-	if((Math.abs(oldX - x) >= headWidth) || (Math.abs(oldY - y) >= headWidth))
+	if((Math.abs(oldX - x) >= headWidth/2) || (Math.abs(oldY - y) >= headWidth/2))
 	{
 		oldX = x;
 		oldY = y;
 		turnable = true;
 	}
 
-	if (timer > 1000)
-	{
-		timer = 0;
-	}
-
-	frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
 	frontCtx.fillStyle = "blue";
 	frontCtx.fillRect(x, y, headWidth, headWidth);
+}
+
+/**
+ * @function appleSpawner()
+ * Spawns an apple every 5 seconds.
+ * Draws the apples each frame.
+ */
+function appleSpawner()
+{
+	if(timer >= 5000)
+	{
+		if(appleCount >= 3)
+		{
+			apples.shift();
+		}
+		var appleX = headWidth * Math.floor((Math.random() * frontBuffer.width/headWidth));
+		var appleY = headWidth * Math.floor((Math.random() * frontBuffer.height/headWidth));
+		
+		//for each snake segment, if appleX and appleY intersects, recalculate
+		
+		apples.push([appleX, appleY]);
+		appleCount++;
+		timer = 0;
+	}	
 	
+	frontCtx.fillStyle = "red";
+	for(i = 0; i < apples.length; i++)
+	{
+		var curApple = apples[i];
+		frontCtx.fillRect(curApple[0], curApple[1], headWidth, headWidth);
+	}
+}
+
+function collisionDetection()
+{
+	for(i = 0; i < apples.length; i++)
+	{
+		curApple = apples[i];
+		if (!(y+headWidth < curApple[1] || y > curApple[1]+headWidth 
+				|| x > curApple[0] + headWidth || x+headWidth < curApple[0]))
+		{
+			apples.splice(i, 1);
+			appleCount--;
+			
+			//Grow worm
+		}
+	}
+}
+/**
+ * @function update
+ * Updates the game state, moving
+ * game objects and handling interactions
+ * between them.
+ * @param {elapsedTime} A DOMHighResTimeStamp indicting
+ * the number of milliseconds passed since the last frame.
+ */
+function update(elapsedTime) 
+{	
+	frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
+	appleSpawner();
+	move(elapsedTime);
+	collisionDetection();
   // To make snake parts follow head, use array and replace each location with 
   // location of piece in front of them
   
-  // TODO: Spawn an apple periodically
   // TODO: Grow the snake periodically
 		//example: var arr = [{xpos:0, ypos:5, radius:5}]
 		//arr.push({});
 		//arr.forEach(function (item, index, array))
 		//shift, unshift, pop, push
   
-  // TODO: Move the snake
   // TODO: Determine if the snake has moved out-of-bounds (offscreen)
-  // TODO: Determine if the snake has eaten an apple
   // TODO: Determine if the snake has eaten its tail
   
   // TODO: [Extra Credit] Determine if the snake has run into an obstacle
