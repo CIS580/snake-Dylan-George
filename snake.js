@@ -19,7 +19,7 @@ var speed = 10;
 var appleTimer = 0;
 var appleCount = 0;
 var radius = headWidth/2;
-var adjust = false;
+var headAdjust = false;
 var turnable = false;
 var won = false;
 var lost = false;
@@ -141,11 +141,11 @@ window.onkeydown = function(event)
  * @function resetDirection
  * Resets the current movement direction
  * to enable the change of direction.
- * Sets adjust to true so worm is fit to grid next update
+ * Sets headAdjust to true so worm is fit to grid next update
  */
 function resetDirection()
 {
-	adjust = true;
+	headAdjust = true;
 	for(var direction in currentDirection)
 	{
 		currentDirection[direction] = false;
@@ -165,18 +165,22 @@ function move(elapsedTime)
 	var gridY = headWidth * Math.floor((y+radius)/headWidth);
 	var xDif = x;
 	var yDif = y;
-	if(adjust)
+	var right = false;
+	var left = false;
+	var up = false;
+	var down = false;
+	
+	if(headAdjust)
 	{
 		x = gridX;
 		y = gridY;
-		adjust = false;
+		headAdjust = false;
 	}
 
 	if(currentDirection.up) y -= speed * headWidth * elapsedTime / 1000;
 	else if(currentDirection.down) y += speed * headWidth * elapsedTime / 1000;
 	else if(currentDirection.right) x += speed * headWidth * elapsedTime / 1000;
 	else if(currentDirection.left) x -= speed * headWidth * elapsedTime / 1000;
-	console.log(speed * headWidth * elapsedTime / 1000);
 	if((Math.abs(oldX - x) >= headWidth/2) || (Math.abs(oldY - y) >= headWidth/2))
 	{
 		oldX = x;
@@ -189,20 +193,38 @@ function move(elapsedTime)
 	{
 		var segment = snake[i];
 		segment.time += elapsedTime;
+		
+		if (segment.goalX > segment.xpos) right = true;
+		else if (segment.goalY > segment.ypos) down = true;
+		else if (segment.goalX < segment.xpos) left = true;
+		else if (segment.goalY < segment.ypos) up = true;
+		
 		if(i > 0)
 		{
-			var curGridX =  headWidth * Math.floor((segment.xpos+radius)/headWidth);
-			var curGridY =  headWidth * Math.floor((segment.ypos+radius)/headWidth);
+			if(right || down)
+			{
+				console.log("right/down");
+				var curGridX =  headWidth * Math.floor(segment.xpos/headWidth);
+				var curGridY =  headWidth * Math.floor(segment.ypos/headWidth);
+			}
+			else if(left || up)
+			{
+				var curGridX =  headWidth * Math.floor((segment.xpos+headWidth)/headWidth);
+				var curGridY =  headWidth * Math.floor((segment.ypos+headWidth)/headWidth);
+			}
+			
 			if((curGridX == segment.goalX) && (curGridY == segment.goalY))
 			{
+				segment.xpos = segment.goalX;
+				segment.ypos = segment.goalY;
 				segment.goalX = headWidth * Math.floor((snake[i-1].xpos+radius)/headWidth);
 				segment.goalY = headWidth * Math.floor((snake[i-1].ypos+radius)/headWidth);
+				pieceAdjust = true;
 			}
 
 			if(segment.goalX > curGridX)
 			{
 				segment.xpos += speed * headWidth * elapsedTime / 1000;
-				console.log(speed * headWidth * elapsedTime / 1000);
 			}
 			else if(segment.goalX < curGridX)
 			{
@@ -282,14 +304,14 @@ function collisionDetection()
 			
 			apples.splice(i, 1);
 			appleCount--;
+			var endPiece = snake[snake.length-1];
+			if(currentDirection.up) snake.push({xpos: endPiece.xpos, ypos: endPiece.ypos+headWidth, goalX: 0, goalY: 0});
+			else if(currentDirection.down) snake.push({xpos: endPiece.xpos, ypos: endPiece.ypos-headWidth, goalX: 0, goalY: 0});
+			else if(currentDirection.right) snake.push({xpos: endPiece.xpos-headWidth, ypos: endPiece.ypos, goalX: 0, goalY: 0});
+			else if(currentDirection.left) snake.push({xpos: endPiece.xpos+headWidth, ypos: endPiece.ypos, goalX: 0, goalY: 0});
 			
-			if(currentDirection.up) snake.push({xpos: x, ypos: y+headWidth, goalX: 0, goalY: 0});
-			else if(currentDirection.down) snake.push({xpos: x, ypos: y-headWidth, goalX: 0, goalY: 0});
-			else if(currentDirection.right)snake.push({xpos: x-headWidth, ypos: y, goalX: 0, goalY: 0});
-			else if(currentDirection.left) snake.push({xpos: x+headWidth, ypos: y, goalX: 0, goalY: 0});
-			
-			snake[snake.length-1].goalX = headWidth * Math.floor((snake[snake.length-2].xpos+radius)/headWidth);
-			snake[snake.length-1].goalY = headWidth * Math.floor((snake[snake.length-2].ypos+radius)/headWidth);
+			snake[snake.length-1].goalX = headWidth * Math.floor((snake[snake.length-2].xpos)/headWidth);
+			snake[snake.length-1].goalY = headWidth * Math.floor((snake[snake.length-2].ypos)/headWidth);
 			
 		}
 	}
@@ -357,7 +379,6 @@ function update(elapsedTime)
   * the number of milliseconds passed since the last frame.
   */
 function render(elapsedTime) {
-
   backCtx.fillStyle = "grey";
   backCtx.fillRect(0, 0, backBuffer.width, backBuffer.height);
   backCtx.drawImage(frontBuffer, 0, 0);
