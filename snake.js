@@ -1,3 +1,7 @@
+/* snake.js
+ *	Author: Dylan George
+ */
+
 /* Global variables */
 var frontBuffer = document.getElementById('snake');
 var frontCtx = frontBuffer.getContext('2d');
@@ -10,19 +14,21 @@ var oldTime = performance.now();
 //x and y position of snake head
 var x = 0;
 var y = 0;
-var oldX = 0;
-var oldY = 0;
 
-var headWidth = 15;
-//Total headWidths travelled per second
-var speed = 10;
+//pixel length of snake pieces
+var headWidth = 30;
+//milliseconds until movement
+var speed = 125;
 var appleTimer = 0;
+var timer = 0;
 var appleCount = 0;
 var radius = headWidth/2;
-var headAdjust = false;
 var turnable = false;
+
 var won = false;
 var lost = false;
+var score = 0;
+
 var apples = [];
 var snake = [];
 var maxSize = (frontBuffer.width/headWidth) * (frontBuffer.height/headWidth);
@@ -48,8 +54,6 @@ function start()
 	
 	x = headWidth * Math.floor((Math.random() * frontBuffer.width/headWidth));
 	y = headWidth * Math.floor((Math.random() * frontBuffer.height/headWidth));
-	oldX = x;
-	oldY = y;
 
 	if (y <= (frontBuffer.height / 2))
 	{
@@ -62,7 +66,29 @@ function start()
 	
 	appleTimer = 5000;
 	appleSpawner();
-	snake.push({xpos: x, ypos: y, time: 0});
+	snake.push({xpos: x, ypos: y});
+	grow();
+	grow();
+}
+
+//restarts the game
+function restart()
+{
+	x = 0;
+	y = 0;
+	appleTimer = 0;
+	timer = 0;
+	appleCount = 0;
+	turnable = true;
+
+	won = false;
+	lost = false;
+	score = 0;
+
+	apples = [];
+	snake = [];
+	
+	start();
 }
 
 /**
@@ -87,70 +113,73 @@ function loop(newTime) {
 
 
 //Handles arrow key/wasd button press events, allowing movement
+//Also space for restart
 window.onkeydown = function(event)
 {
+	if(event.keyCode == 32 && (lost || won))
+	{
+		restart();
+		event.preventDefault();
+	}
 	if(turnable)
 	{
-	switch(event.keyCode)
-	{
-		//up
-		case 38:
-		case 87:
-			if(!currentDirection.down && !currentDirection.up)
-			{
-				resetDirection();
-				currentDirection.up = true;
-			}
-			event.preventDefault();
-			break;
-		//down
-		case 40:
-		case 83:
-			if(!currentDirection.up && !currentDirection.down)
-			{
-				resetDirection();
-				currentDirection.down = true;
-			}
-			event.preventDefault();
-			break;
-		//left
-		case 37:
-		case 65:
-			if(!currentDirection.right && !currentDirection.left)
-			{
-				resetDirection();
-				currentDirection.left = true;
-			}
-			event.preventDefault();
-			break;
-		//right
-		case 39:
-		case 68:
-			if(!currentDirection.left && !currentDirection.right)
-			{
-				resetDirection();
-				currentDirection.right = true;
-			}
-			event.preventDefault();
-			break;
-	}
+		switch(event.keyCode)
+		{
+			//up
+			case 38:
+			case 87:
+				if(!currentDirection.down && !currentDirection.up)
+				{
+					resetDirection();
+					currentDirection.up = true;
+				}
+				event.preventDefault();
+				break;
+			//down
+			case 40:
+			case 83:
+				if(!currentDirection.up && !currentDirection.down)
+				{
+					resetDirection();
+					currentDirection.down = true;
+				}
+				event.preventDefault();
+				break;
+			//left
+			case 37:
+			case 65:
+				if(!currentDirection.right && !currentDirection.left)
+				{
+					resetDirection();
+					currentDirection.left = true;
+				}
+				event.preventDefault();
+				break;
+			//right
+			case 39:
+			case 68:
+				if(!currentDirection.left && !currentDirection.right)
+				{
+					resetDirection();
+					currentDirection.right = true;
+				}
+				event.preventDefault();
+				break;
+		}
 	}
 }
 
 /**
  * @function resetDirection
  * Resets the current movement direction
- * to enable the change of direction.
- * Sets headAdjust to true so worm is fit to grid next update
  */
 function resetDirection()
 {
-	headAdjust = true;
+	turnable = false;
 	for(var direction in currentDirection)
 	{
 		currentDirection[direction] = false;
 	}	
-	turnable = false;
 }
 
 /**
@@ -161,91 +190,40 @@ function resetDirection()
  */
 function move(elapsedTime)
 {
-	var gridX = headWidth * Math.floor((x+radius)/headWidth);
-	var gridY = headWidth * Math.floor((y+radius)/headWidth);
-	var xDif = x;
-	var yDif = y;
-	var right = false;
-	var left = false;
-	var up = false;
-	var down = false;
+	timer+=elapsedTime;
 	
-	if(headAdjust)
+	if (timer >= speed)
 	{
-		x = gridX;
-		y = gridY;
-		headAdjust = false;
-	}
-
-	if(currentDirection.up) y -= speed * headWidth * elapsedTime / 1000;
-	else if(currentDirection.down) y += speed * headWidth * elapsedTime / 1000;
-	else if(currentDirection.right) x += speed * headWidth * elapsedTime / 1000;
-	else if(currentDirection.left) x -= speed * headWidth * elapsedTime / 1000;
-	if((Math.abs(oldX - x) >= headWidth/2) || (Math.abs(oldY - y) >= headWidth/2))
-	{
-		oldX = x;
-		oldY = y;
+		timer = 0;
+		
+		if(currentDirection.up) y -= headWidth;
+		else if(currentDirection.down) y += headWidth;
+		else if(currentDirection.right) x += headWidth;
+		else if(currentDirection.left) x -= headWidth;
+		
+		//remove last piece and put it in front as new head
+		if(snake.length > 1)
+		{
+			snake.unshift(snake[snake.length-1]);
+			snake.splice(snake.length-1,1);
+		}
+		snake[0].xpos = x;
+		snake[0].ypos = y;
 		turnable = true;
 	}
-
+	
 	frontCtx.fillStyle = "lightgreen";
-	for(i = snake.length-1; i >= 0; i--)
+	for(i = 0; i < snake.length; i++)
 	{
 		var segment = snake[i];
-		segment.time += elapsedTime;
-		
-		if (segment.goalX > segment.xpos) right = true;
-		else if (segment.goalY > segment.ypos) down = true;
-		else if (segment.goalX < segment.xpos) left = true;
-		else if (segment.goalY < segment.ypos) up = true;
-		
-		if(i > 0)
-		{
-			if(right || down)
-			{
-				console.log("right/down");
-				var curGridX =  headWidth * Math.floor(segment.xpos/headWidth);
-				var curGridY =  headWidth * Math.floor(segment.ypos/headWidth);
-			}
-			else if(left || up)
-			{
-				var curGridX =  headWidth * Math.floor((segment.xpos+headWidth)/headWidth);
-				var curGridY =  headWidth * Math.floor((segment.ypos+headWidth)/headWidth);
-			}
-			
-			if((curGridX == segment.goalX) && (curGridY == segment.goalY))
-			{
-				segment.xpos = segment.goalX;
-				segment.ypos = segment.goalY;
-				segment.goalX = headWidth * Math.floor((snake[i-1].xpos+radius)/headWidth);
-				segment.goalY = headWidth * Math.floor((snake[i-1].ypos+radius)/headWidth);
-				pieceAdjust = true;
-			}
 
-			if(segment.goalX > curGridX)
-			{
-				segment.xpos += speed * headWidth * elapsedTime / 1000;
-			}
-			else if(segment.goalX < curGridX)
-			{
-				segment.xpos -= speed * headWidth * elapsedTime / 1000;
-			}
-			if(segment.goalY > curGridY)
-			{
-				segment.ypos += speed * headWidth * elapsedTime / 1000;
-			}
-			else if(segment.goalY < curGridY)
-			{
-				segment.ypos -= speed * headWidth * elapsedTime / 1000;
-			}
-		}
-		else 
+		if (i == snake.length -1) 
 		{
-			segment.xpos = x;
-			segment.ypos = y;
+		frontCtx.fillStyle = "green";
+		frontCtx.strokeStyle = "lightgreen";
 		}
+		else frontCtx.strokeStyle = "green";
 		frontCtx.fillRect(segment.xpos, segment.ypos, headWidth, headWidth);
-		frontCtx.strokeStyle = "green";
 		frontCtx.strokeRect(segment.xpos, segment.ypos, headWidth, headWidth);
 	}
 	
@@ -253,12 +231,12 @@ function move(elapsedTime)
 
 /**
  * @function appleSpawner()
- * Spawns an apple every 5 seconds.
+ * Spawns an apple every 3 seconds.
  * Draws the apples each frame.
  */
 function appleSpawner()
 {
-	if(appleTimer >= 5000)
+	if(appleTimer >= 3000)
 	{
 		if(appleCount >= 3)
 		{
@@ -282,6 +260,10 @@ function appleSpawner()
 	}
 }
 
+/**
+ *@function collisionDetection
+ * Handles collision detection on the head of the snake
+ */
 function collisionDetection()
 {
 	//borders
@@ -304,19 +286,36 @@ function collisionDetection()
 			
 			apples.splice(i, 1);
 			appleCount--;
-			var endPiece = snake[snake.length-1];
-			if(currentDirection.up) snake.push({xpos: endPiece.xpos, ypos: endPiece.ypos+headWidth, goalX: 0, goalY: 0});
-			else if(currentDirection.down) snake.push({xpos: endPiece.xpos, ypos: endPiece.ypos-headWidth, goalX: 0, goalY: 0});
-			else if(currentDirection.right) snake.push({xpos: endPiece.xpos-headWidth, ypos: endPiece.ypos, goalX: 0, goalY: 0});
-			else if(currentDirection.left) snake.push({xpos: endPiece.xpos+headWidth, ypos: endPiece.ypos, goalX: 0, goalY: 0});
-			
-			snake[snake.length-1].goalX = headWidth * Math.floor((snake[snake.length-2].xpos)/headWidth);
-			snake[snake.length-1].goalY = headWidth * Math.floor((snake[snake.length-2].ypos)/headWidth);
-			
+			score++;
+			grow();
 		}
 	}
 	
 	//snake parts
+	for(i = 1; i<snake.length; i++)
+	{	
+		var front = snake[0];
+		var curSegment = snake[i];
+		if (!(front.ypos+headWidth/2 < curSegment.ypos || front.ypos > curSegment.ypos+headWidth/2
+				|| front.xpos > curSegment.xpos + headWidth/2 || front.xpos+headWidth/2 < curSegment.xpos))
+		{
+			lost = true;
+			console.log("lost");
+		}
+	}
+}
+
+/**
+ *@function grow
+ * Grows the snake in the correct direction
+ */
+function grow()
+{
+	var endPiece = snake[snake.length-1];
+	if(currentDirection.up) snake.push({xpos: endPiece.xpos, ypos: endPiece.ypos+headWidth});
+	else if(currentDirection.down) snake.push({xpos: endPiece.xpos, ypos: endPiece.ypos-headWidth});
+	else if(currentDirection.right) snake.push({xpos: endPiece.xpos-headWidth, ypos: endPiece.ypos});
+	else if(currentDirection.left) snake.push({xpos: endPiece.xpos+headWidth, ypos: endPiece.ypos});
 }
 
 /**
@@ -329,47 +328,34 @@ function collisionDetection()
  */
 function update(elapsedTime) 
 {	
-	frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
+	
 	if(won)
 	{
+		frontCtx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+		frontCtx.fillRect(0, frontBuffer.height/4, frontBuffer.width, 300);
+		frontCtx.fillStyle = 'black';
+		frontCtx.font = "40px Arial"; 
+		frontCtx.fillText("You win!", frontBuffer.width/3, frontBuffer.height/2);
+		frontCtx.font = "20px Arial"; 
+		frontCtx.fillText("Press Space to start over.", frontBuffer.width/3 + 1, frontBuffer.height/2 + 50);
 	}
 	else if(lost)
 	{
+		frontCtx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+		frontCtx.fillRect(0, frontBuffer.height/4, frontBuffer.width, 300);
+		frontCtx.fillStyle = 'black';
+		frontCtx.font = "40px Arial"; 
+		frontCtx.fillText("Game over :(", frontBuffer.width/3, frontBuffer.height/2);
+		frontCtx.font = "20px Arial"; 
+		frontCtx.fillText("Press Space to try again.", frontBuffer.width/3 + 1, frontBuffer.height/2 + 50);
 	}
 	else
 	{
+		frontCtx.clearRect(0, 0, frontBuffer.width, frontBuffer.height);
 		appleSpawner();
 		move(elapsedTime);
 		collisionDetection();
 	}
-  // To make snake parts follow head, use array and replace each location with 
-  // location of piece in front of them
-  
-  // TODO: Grow the snake periodically
-		//example: var arr = [{xpos:0, ypos:5, radius:5}]
-		//arr.push({});
-		//arr.forEach(function (item, index, array))
-		//shift, unshift, pop, push
-  
-  // TODO: Determine if the snake has eaten its tail
-  
-  // TODO: [Extra Credit] Determine if the snake has run into an obstacle
-		//Check only against head
-		
-		//Circle:
-		//Take two points, measure distance between each and if it is smaller
-		//Than a certain distance, the objects are colliding
-		//Distance formula: d = sqrt((x1-x2)^2 + (y1-y2)^2)
-		//Instead of sqrt, use d^2 = (x1-x2)^2 + (y1-y2)^2
-		//Probably use d^2 (><=) r1^2 + r2^2
-		// > is overlap, = is intersect, < is no collision
-		
-		/*Square:
-		* A and B are squares
-		* If !(Abottom > Btop || Atop < Bbottom || Aleft > Bright || Aright < Bleft)
-		* then they are intersecting 
-		*/
-
 }
 
 /**
@@ -381,6 +367,9 @@ function update(elapsedTime)
 function render(elapsedTime) {
   backCtx.fillStyle = "grey";
   backCtx.fillRect(0, 0, backBuffer.width, backBuffer.height);
+  backCtx.fillStyle = "black";
+  backCtx.font = "20px Arial"; 
+  backCtx.fillText("Score: " + score, 5, backBuffer.height - 5);
   backCtx.drawImage(frontBuffer, 0, 0);
 }
 
